@@ -19,4 +19,4 @@ This model provides four outputs:
 - flows: an array of shape `b,8,y,x`
     - For each input image flows are stacked together.
 - styles: an array of shape `b,y,x`
-- diams: the estimated diameter of shape `b`
+- diams: the estimated diameter of shape `1`

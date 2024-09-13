@@ -1,4 +1,4 @@
-name: sam-encoder
+name: cellpose
 channels:
   - pytorch
   - nvidia

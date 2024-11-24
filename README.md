@@ -18,5 +18,5 @@ This model provides four outputs:
 - masks: an array of shape `b,y,x`
 - flows: an array of shape `b,6,y,x`
     - For each input image flows are stacked together.
-- styles: an array of shape `b,y,x`
+- styles: an array of shape `b,256`
 - diams: the estimated diameter of shape `b,1`

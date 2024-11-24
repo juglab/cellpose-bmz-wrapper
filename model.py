@@ -260,7 +260,11 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         flows = np.array(flows)
 
         # add batch dim to dims
-        diams = np.array(np.round(diams, 5)).repeat(x.shape[0]).reshape(-1, 1)
+        if self.estimate_diam:
+            diams = np.array(np.round(diams, 5)).reshape(-1, 1)
+        else:
+            diams = np.array(np.round(diams, 5)).repeat(x.shape[0]).reshape(-1, 1)
+        assert diams.shape[0] == x.shape[0]
 
         return masks, flows, styles, diams
 

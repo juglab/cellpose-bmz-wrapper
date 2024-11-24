@@ -8,6 +8,11 @@ from cellpose import models as cpmodels
 from cellpose.resnet_torch import CPnet
 from cellpose.core import assign_device
 
+
+np.random.seed(13)
+torch.manual_seed(13)
+torch.cuda.manual_seed(13)
+
 # important:
 # to prevent mix-up between pytorch module eval and cellpose eval function
 cpmodels.CellposeModel.evaluate = cpmodels.CellposeModel.eval
@@ -243,18 +248,21 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         masks = np.array(masks_list, dtype=np.float32)
         styles = np.array(style_list, dtype=np.float32)
         # flows: stack them together
+        # TODO: each image flow can be a list of 3 or 4. but here we ignore the 4th element anyway.
         flows = []
         for fl in flows_list:
             f_arr = np.vstack([
                 np.moveaxis(fl[0], 2, 0),
                 fl[1],
                 fl[2][np.newaxis],
-                fl[3]
             ], dtype=np.float32)
             flows.append(f_arr)
         flows = np.array(flows)
 
-        return masks, flows, styles, np.round(diams, 5)
+        # add batch dim to dims
+        diams = np.array(np.round(diams, 5)).repeat(x.shape[0]).reshape(-1, 1)
+
+        return masks, flows, styles, diams
 
 
 if __name__ == "__main__":
@@ -263,12 +271,12 @@ if __name__ == "__main__":
 
     tiff_images = tifffile.imread("./data/test_images.tif")
     print(tiff_images.shape)
-    img_batch = torch.from_numpy(tiff_images).unsqueeze(1).permute(0, 2, 3, 1)
-    print(img_batch.shape)  # should be channel last
+    img_batch = torch.from_numpy(tiff_images).unsqueeze(1)
+    print(img_batch.shape) # should be b,c,y,x
 
-    model = CellPoseWrapper(estimate_diam=True)
+    model = CellPoseWrapper(estimate_diam=True, gpu=False)
     model.load_state_dict(
-        torch.load("./cellpose_models/cyto3", map_location=model.device)
+        torch.load("../original/cellpose_models/cyto3", map_location=model.device)
     )
     # torch.save(model.state_dict(), "./model_weights.pth")
 

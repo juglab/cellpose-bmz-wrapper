@@ -1,17 +1,16 @@
 name: cellpose
 channels:
   - pytorch
-  - nvidia
   - conda-forge
+  - defaults
 dependencies:
-  - python=3.8
-  - cuda=11.8
+  - python=3.9
   - pytorch
   - torchvision
   - setuptools
   - bioimageio.core
   - imagecodecs
-  - cellpose
+  - cellpose=3.1.0
   - pip:
       - matplotlib
       - tqdm

@@ -1,12 +1,13 @@
 # cellpose-bmz-wrapper
 #### A wrapper to make a bioimage model zoo compatible package out of Cellpose models  
 
-The `model.py` contains the wrapper model's code which is a subclass of both `torch.nn.Module` and the `CellposeModel` classes. This model is based on cellpose `cyto3` model, and the `SizeModel` is also included.  
+The `model.py` contains the wrapper model's code which is a subclass of both `torch.nn.Module` and the `CellposeModel` classes. The `SizeModel` for `cyto3` and `nuclei` models are also included, so you can set `estimate_diam=True` to use the `SizeModel` to estimate the object diameter.   
+
 To produce sample input/outputs you can use the `data_preparation` notebook. And to pack the model for the _BMZ_ use the `model_preparation_cellpose` notebook.
 
 ### Usage example
 ```python
-model = CellPoseWrapper(estimate_diam=True)
+model = CellPoseWrapper(model_type="cyto3", estimate_diam=True)
 model.load_state_dict(
     torch.load("./cellpose_models/cyto3", map_location=model.device)
 )

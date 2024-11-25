@@ -32,7 +32,7 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
     which is also act as a pytorch model.
     """
     def __init__(
-        self, model_type="cyto3", diam_mean=30., cp_batch_size=8, channels=[0, 0],
+        self, model_type="cyto3", diam_mean=None, cp_batch_size=8, channels=[0, 0],
         flow_threshold=0.4, cellprob_threshold=0.0, stitch_threshold=0.0,
         estimate_diam=False, normalize=True, do_3D=False, gpu=True
     ):
@@ -41,6 +41,11 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         self.backbone = "default"
         self.model_type = model_type
         self.diam_mean = diam_mean
+        if self.diam_mean is None:
+            if self.model_type == "nuclei":
+                self.diam_mean = 17.
+            else:
+                self.diam_mean = 30.
         self.cp_batch_size = cp_batch_size
         self.channels = channels
         self.flow_threshold = flow_threshold

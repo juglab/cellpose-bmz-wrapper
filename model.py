@@ -13,8 +13,8 @@ np.random.seed(13)
 torch.manual_seed(13)
 torch.cuda.manual_seed(13)
 
-# important:
-# to prevent mix-up between pytorch module eval and cellpose eval function
+# !important:
+# to prevent mix-up between pytorch module eval and cellpose eval functions
 cpmodels.CellposeModel.evaluate = cpmodels.CellposeModel.eval
 
 
@@ -28,7 +28,7 @@ class SizeModelWrapper(cpmodels.SizeModel):
 
 class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
     """
-    A wrapper around the cellpose 'cyto3' model
+    A wrapper around the cellpose model
     which is also act as a pytorch model.
     """
     def __init__(
@@ -54,7 +54,7 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         self.estimate_diam = estimate_diam
         self.normalize = normalize
         self.do_3D = do_3D
-        self.nchan = 3
+        self.nchan = 2
         self.nclasses = 3
         self.nbase = [2, 32, 64, 128, 256]
         self.mkl_enabled = torch.backends.mkldnn.is_available()
@@ -66,7 +66,7 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         self.device, self.gpu = assign_device(use_torch=True, gpu=gpu)
 
         self.net = CPnet(
-            nbase=self.nbase, nout=self.nchan, sz=3,
+            nbase=self.nbase, nout=self.nclasses, sz=3,
             mkldnn=self.mkl_enabled, max_pool=True,
             diam_mean=self.diam_mean
         )
@@ -346,14 +346,22 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         self.size_model = SizeModelWrapper(self, size_model_params)
 
     def load_state_dict(self, state_dict, strict=True, assign=False):
-        matched = self.net.load_state_dict(state_dict, strict=strict, assign=assign)
-        if len(matched.missing_keys) == 0 and len(matched.unexpected_keys) == 0:
-            self.diam_labels = self.net.diam_labels.data.cpu().numpy()[0]
-            self.net.diameter_labels = self.diam_labels
-            # self.diam_mean = self.net.diam_mean.data.cpu().numpy()[0]
-            self.diam_mean = self.diam_labels
+        assert state_dict["output.2.weight"].shape[0], self.net.nout
 
-        return matched
+        if state_dict["output.2.weight"].shape[0] != self.net.nout:
+            for name in self.net.state_dict():
+                if "output" not in name:
+                    self.net.state_dict()[name].copy_(state_dict[name])
+        else:
+            self.net.load_state_dict(
+                dict([(name, param) for name, param in state_dict.items()]),
+                strict=False)
+
+        self.diam_mean = self.net.diam_mean.data.cpu().numpy()[0]      # ROIs rescaled to this size during training
+        self.diam_labels = self.net.diam_labels.data.cpu().numpy()[0]  # mean diameter of training ROIs
+        # print(self.diam_mean, self.net.diam_mean, self.diam_labels)
+
+        return True
 
     def eval(self, *args, **kwargs):
         # pytorch module eval or cellpose model eval method?!
@@ -373,7 +381,7 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         image_list = [img.permute(1, 2, 0).cpu().numpy() for img in x]
         img_dims = len(image_list[0].shape)
         # estimating the diameter
-        diams = self.diam_mean
+        diams = self.diam_labels  # diameter used for training / fine-tuning
         if self.estimate_diam and not self.do_3D and img_dims < 4:
             diams, _ = self.size_model.eval(
                 image_list, channels=self.channels, channel_axis=None,
@@ -384,8 +392,12 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
         masks_list, flows_list, style_list = self.eval(
             image_list, channels=self.channels,
             channel_axis=self.channel_axis,
+            diameter=diams,
+            flow_threshold=self.flow_threshold,
+            cellprob_threshold=self.cellprob_threshold,
+            stitch_threshold=self.stitch_threshold,
             batch_size=self.cp_batch_size, normalize=self.normalize,
-            invert=self.invert, diameter=diams, do_3D=self.do_3D,
+            invert=self.invert, do_3D=self.do_3D,
         )
 
         # convert outputs to numpy arrays

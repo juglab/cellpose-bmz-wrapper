@@ -10,7 +10,8 @@ dependencies:
   - setuptools
   - bioimageio.core
   - imagecodecs
-  - cellpose=3.1.0
+  - pip
   - pip:
       - matplotlib
       - tqdm
+      - cellpose==3.1.0

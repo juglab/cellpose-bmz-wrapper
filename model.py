@@ -1,4 +1,5 @@
 from typing import Tuple, List
+from collections import namedtuple
 
 import numpy as np
 import torch
@@ -347,21 +348,22 @@ class CellPoseWrapper(nn.Module, cpmodels.CellposeModel):
 
     def load_state_dict(self, state_dict, strict=True, assign=False):
         assert state_dict["output.2.weight"].shape[0], self.net.nout
+        Incompatible = namedtuple("IncompatibleKeys", ["missing_keys", "unexpected_keys"])
+        result = Incompatible([], [])
 
         if state_dict["output.2.weight"].shape[0] != self.net.nout:
             for name in self.net.state_dict():
                 if "output" not in name:
                     self.net.state_dict()[name].copy_(state_dict[name])
         else:
-            self.net.load_state_dict(
+            result = self.net.load_state_dict(
                 dict([(name, param) for name, param in state_dict.items()]),
                 strict=False)
 
         self.diam_mean = self.net.diam_mean.data.cpu().numpy()[0]      # ROIs rescaled to this size during training
         self.diam_labels = self.net.diam_labels.data.cpu().numpy()[0]  # mean diameter of training ROIs
-        # print(self.diam_mean, self.net.diam_mean, self.diam_labels)
 
-        return True
+        return result
 
     def eval(self, *args, **kwargs):
         # pytorch module eval or cellpose model eval method?!
